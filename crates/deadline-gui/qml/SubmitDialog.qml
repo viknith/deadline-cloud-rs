@@ -20,6 +20,7 @@ ApplicationWindow {
     ResourceModel { id: resourceModel }
     ParameterListModel { id: parameterModel }
     AttachmentModel { id: attachmentModel }
+    HostRequirementsModel { id: hostRequirementsModel }
 
     Connections {
         target: authModel
@@ -73,6 +74,7 @@ ApplicationWindow {
 
             TabButton {
                 text: "Shared job settings"
+                Accessible.onPressAction: tabBar.currentIndex = 0
                 background: Rectangle {
                     implicitHeight: 32
                     color: tabBar.currentIndex === 0 ? palette.highlight : (parent.hovered ? palette.midlight : "transparent")
@@ -87,6 +89,7 @@ ApplicationWindow {
             }
             TabButton {
                 text: "Job-specific settings"
+                Accessible.onPressAction: tabBar.currentIndex = 1
                 background: Rectangle {
                     implicitHeight: 32
                     color: tabBar.currentIndex === 1 ? palette.highlight : (parent.hovered ? palette.midlight : "transparent")
@@ -101,6 +104,7 @@ ApplicationWindow {
             }
             TabButton {
                 text: "Job attachments"
+                Accessible.onPressAction: tabBar.currentIndex = 2
                 background: Rectangle {
                     implicitHeight: 32
                     color: tabBar.currentIndex === 2 ? palette.highlight : (parent.hovered ? palette.midlight : "transparent")
@@ -115,6 +119,7 @@ ApplicationWindow {
             }
             TabButton {
                 text: "Host requirements"
+                Accessible.onPressAction: tabBar.currentIndex = 3
                 background: Rectangle {
                     implicitHeight: 32
                     color: tabBar.currentIndex === 3 ? palette.highlight : (parent.hovered ? palette.midlight : "transparent")
@@ -271,22 +276,22 @@ ApplicationWindow {
                                         TextField {
                                             visible: modelData._resolvedControl === "LINE_EDIT" || modelData._resolvedControl === "MULTILINE_EDIT"
                                             Layout.fillWidth: true
-                                            text: modelData.value !== undefined ? String(modelData.value) : (modelData["default"] !== undefined ? String(modelData["default"]) : "")
                                             Accessible.name: modelData.name
-                                            onTextChanged: parameterModel.set_parameter_value(modelData.name, text)
+                                            Component.onCompleted: text = modelData.value !== undefined ? String(modelData.value) : (modelData["default"] !== undefined ? String(modelData["default"]) : "")
+                                            onEditingFinished: parameterModel.set_parameter_value(modelData.name, text)
                                         }
                                         // DROPDOWN_LIST
                                         ComboBox {
                                             visible: modelData._resolvedControl === "DROPDOWN_LIST"
                                             Layout.fillWidth: true
                                             model: modelData.allowedValues || []
-                                            currentIndex: {
+                                            Accessible.name: currentText
+                                            Component.onCompleted: {
                                                 var vals = modelData.allowedValues || []
                                                 var cur = modelData.value !== undefined ? String(modelData.value) : (modelData["default"] !== undefined ? String(modelData["default"]) : "")
                                                 var idx = vals.indexOf(cur)
-                                                return idx >= 0 ? idx : 0
+                                                currentIndex = idx >= 0 ? idx : 0
                                             }
-                                            Accessible.name: currentText
                                             onActivated: parameterModel.set_parameter_value(modelData.name, currentText)
                                         }
                                         // SPIN_BOX (INT/FLOAT)
@@ -295,22 +300,22 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             from: modelData.minValue !== undefined ? Number(modelData.minValue) : -2147483647
                                             to: modelData.maxValue !== undefined ? Number(modelData.maxValue) : 2147483647
-                                            value: {
-                                                var v = modelData.value !== undefined ? modelData.value : modelData["default"]
-                                                return v !== undefined ? Number(v) : 0
-                                            }
                                             Accessible.name: modelData.name
+                                            Component.onCompleted: {
+                                                var v = modelData.value !== undefined ? modelData.value : modelData["default"]
+                                                value = v !== undefined ? Number(v) : 0
+                                            }
                                             onValueChanged: parameterModel.set_parameter_value(modelData.name, String(value))
                                         }
                                         // CHECK_BOX
                                         CheckBox {
                                             visible: modelData._resolvedControl === "CHECK_BOX"
                                             Layout.fillWidth: true
-                                            checked: {
-                                                var v = modelData.value !== undefined ? String(modelData.value) : (modelData["default"] !== undefined ? String(modelData["default"]) : "")
-                                                return v.toUpperCase() === "TRUE" || v.toUpperCase() === "YES" || v.toUpperCase() === "ON" || v === "1"
-                                            }
                                             Accessible.name: (modelData.userInterface || {}).label || modelData.name
+                                            Component.onCompleted: {
+                                                var v = modelData.value !== undefined ? String(modelData.value) : (modelData["default"] !== undefined ? String(modelData["default"]) : "")
+                                                checked = v.toUpperCase() === "TRUE" || v.toUpperCase() === "YES" || v.toUpperCase() === "ON" || v === "1"
+                                            }
                                             onCheckedChanged: {
                                                 var vals = modelData.allowedValues || ["True", "False"]
                                                 parameterModel.set_parameter_value(modelData.name, checked ? vals[0] : vals[1])
@@ -352,15 +357,19 @@ ApplicationWindow {
                     width: parent.width
                     spacing: 12
 
-                    CheckBox {
-                        text: "Require all input paths exist"
-                        checked: attachmentModel.require_paths_exist
-                        Accessible.name: "Require all input paths exist"
-                        onCheckedChanged: attachmentModel.require_paths_exist = checked
+                    GroupBox {
+                        title: "General submission settings"
+                        Layout.fillWidth: true
+                        CheckBox {
+                            text: "Require all input paths exist"
+                            checked: attachmentModel.require_paths_exist
+                            Accessible.name: "Require all input paths exist"
+                            onCheckedChanged: attachmentModel.require_paths_exist = checked
+                        }
                     }
 
                     GroupBox {
-                        title: "Input files"
+                        title: "Attach input files"
                         Layout.fillWidth: true
                         ColumnLayout {
                             anchors.left: parent.left
@@ -397,7 +406,7 @@ ApplicationWindow {
                     }
 
                     GroupBox {
-                        title: "Input directories"
+                        title: "Attach input directories"
                         Layout.fillWidth: true
                         ColumnLayout {
                             anchors.left: parent.left
@@ -434,7 +443,7 @@ ApplicationWindow {
                     }
 
                     GroupBox {
-                        title: "Output directories"
+                        title: "Specify output directories"
                         Layout.fillWidth: true
                         ColumnLayout {
                             anchors.left: parent.left
@@ -476,19 +485,9 @@ ApplicationWindow {
             ScrollView {
                 clip: true
                 contentWidth: availableWidth
-                ColumnLayout {
+                HostRequirementsTab {
                     width: parent.width
-                    spacing: 12
-                    GroupBox {
-                        title: "Host Requirements"
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            RadioButton { text: "Run on all available worker hosts"; checked: true; Accessible.name: "Run on all available worker hosts" }
-                            RadioButton { text: "Run on worker hosts that meet the following requirements"; Accessible.name: "Run on worker hosts that meet the following requirements" }
-                        }
-                    }
+                    model: hostRequirementsModel
                 }
             }
         }
@@ -511,13 +510,14 @@ ApplicationWindow {
             Layout.fillWidth: true
             spacing: 8
             Button { text: "Settings..."; onClicked: {} }
-            Button { text: "Help"; onClicked: {} }
+            Button { text: "Help"; Accessible.name: "Help"; onClicked: helpDialog.open() }
             Item { Layout.fillWidth: true }
-            Button { text: "Export bundle"; Accessible.name: "Export bundle"; onClicked: { submitModel.export_bundle(); exportOkDialog.visible = true } }
+            Button { text: "Export bundle"; Accessible.name: "Export bundle"; onClicked: { submitModel.set_host_requirements_json(hostRequirementsModel.serialize()); submitModel.export_bundle(); exportOkDialog.visible = true } }
             Button {
                 text: "Submit"; enabled: submitModel.can_submit && !submitModel.is_submitting
                 Accessible.name: "Submit"
                 onClicked: {
+                    submitModel.set_host_requirements_json(hostRequirementsModel.serialize())
                     submitModel.submit()
                     progressDialog.visible = true
                 }
@@ -669,6 +669,43 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: helpDialog
+        title: "About Deadline Cloud Submitter"
+        modal: true
+        width: 400
+        height: 250
+        anchors.centerIn: parent
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
+            TextArea {
+                id: helpVersionText
+                readOnly: true
+                text: "AWS Deadline Cloud Submitter\nVersion: " + (submitModel.submitter_name || "JobBundle")
+                wrapMode: TextEdit.Wrap
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Accessible.name: "Version information"
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "Copy"
+                    Accessible.name: "Copy"
+                    onClicked: helpVersionText.selectAll()
+                }
+                Button {
+                    text: "Close"
+                    Accessible.name: "Close"
+                    onClicked: helpDialog.close()
+                }
+            }
+        }
+    }
+
     Component.onCompleted: {
         submitModel.initialize("")
         attachmentModel.initialize(submitModel.job_bundle_dir)
@@ -676,5 +713,6 @@ ApplicationWindow {
         var profile = submitModel.aws_profile
         resourceModel.set_profile(profile)
         authModel.set_profile(profile)
+        parameterModel.load_bundle_parameters(submitModel.job_bundle_dir)
     }
 }

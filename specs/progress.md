@@ -252,6 +252,8 @@ story. See `specs/HANDOFF.md` for detailed analysis.
   visibility timeouts. Fix: add STS route to the Python mock (return
   a canned response), increase dialog wait timeouts, or skip the STS
   call entirely when endpoint is HTTP (non-TLS).
+- **Switch to Rust xa11y tests**: xa11y has tests with Rust support,
+  see https://docs.rs/xa11y/latest/xa11y/ and learn about it!
 - **Reduce `serde_json::Value` usage** — 108 references in CLI code.
   Address incrementally when touching those files.
 - **Audit `collect()` then iterate** — 18 sites. Quick fixes when

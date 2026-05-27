@@ -9,6 +9,8 @@ and Job attachments tab reachability.
 
 from __future__ import annotations
 
+import os
+
 from helpers import SubmitterDialog
 
 
@@ -46,6 +48,91 @@ class TestHostRequirementsControls:
         assert gui_submit.locator(
             'radio_button[name="Run on worker hosts that meet the following requirements"]'
         ).exists()
+
+    def test_custom_requirements_disabled_by_default(self, gui_submit: SubmitterDialog) -> None:
+        """When 'Run on all available' is selected, OS checkboxes exist but are disabled."""
+        gui_submit.activate_tab("Host requirements")
+        # The form should exist (with checkboxes) but be disabled when default radio is active
+        linux_cb = gui_submit.locator('check_box[name="Linux"]')
+        assert linux_cb.exists(), "Linux checkbox should exist in the form"
+        assert not linux_cb.element().enabled, "Linux checkbox should be disabled by default"
+
+    def test_os_checkboxes_present_when_custom_selected(self, gui_submit: SubmitterDialog) -> None:
+        """Selecting custom radio reveals OS and architecture checkboxes."""
+        gui_submit.activate_tab("Host requirements")
+        custom_radio = gui_submit.locator(
+            'radio_button[name="Run on worker hosts that meet the following requirements"]'
+        )
+        custom_radio.press()
+        assert gui_submit.locator('check_box[name="Linux"]').exists()
+        assert gui_submit.locator('check_box[name="macOS"]').exists()
+        assert gui_submit.locator('check_box[name="Windows"]').exists()
+        assert gui_submit.locator('check_box[name="x86_64"]').exists()
+        assert gui_submit.locator('check_box[name="ARM64"]').exists()
+
+    def test_hardware_spinboxes_present_when_custom_selected(
+        self, gui_submit: SubmitterDialog
+    ) -> None:
+        """Selecting custom radio reveals hardware requirement spinboxes."""
+        gui_submit.activate_tab("Host requirements")
+        custom_radio = gui_submit.locator(
+            'radio_button[name="Run on worker hosts that meet the following requirements"]'
+        )
+        custom_radio.press()
+        assert gui_submit.locator('static_text[name="vCPUs"]').exists()
+        assert gui_submit.locator('static_text[name="Memory (GiB)"]').exists()
+        assert gui_submit.locator('static_text[name="GPUs"]').exists()
+
+
+class TestHostRequirementsExport:
+    """Host requirements are included in the exported bundle."""
+
+    def test_host_requirements_in_exported_bundle(
+        self, bundle_dir, submitter_env, deadline_env
+    ) -> None:
+        """Check OS box, export bundle, verify hostRequirements in template."""
+        import json
+
+        job_history_dir = submitter_env["_JOB_HISTORY_DIR"]
+        with SubmitterDialog.open(bundle_dir, env=submitter_env) as app:
+            app.wait_farm_resolved()
+            app.activate_tab("Host requirements")
+            custom_radio = app.locator(
+                'radio_button[name="Run on worker hosts that meet the following requirements"]'
+            )
+            custom_radio.press()
+            linux_cb = app.locator('check_box[name="Linux"]')
+            linux_cb.press()
+            app.export_bundle()
+
+        # Find the exported template and verify hostRequirements
+        found = False
+        for root, _dirs, files in os.walk(job_history_dir):
+            for fn in files:
+                if fn.startswith("template."):
+                    template = json.loads(open(os.path.join(root, fn)).read())
+                    steps = template.get("steps", [])
+                    assert len(steps) > 0, "Template has no steps"
+                    hr = steps[0].get("hostRequirements", {})
+                    attrs = hr.get("attributes", [])
+                    os_attr = next(
+                        (a for a in attrs if a["name"] == "attr.worker.os.family"), None
+                    )
+                    assert os_attr is not None, f"No os.family attribute in {hr}"
+                    assert "linux" in os_attr["anyOf"]
+                    found = True
+        assert found, "No template file found in job-history bundle"
+
+
+class TestHelpDialog:
+    """The Help button opens a dialog."""
+
+    def test_help_button_opens_dialog(self, gui_submit: SubmitterDialog) -> None:
+        gui_submit.button("Help").press()
+        # QML Dialog exposes its title as static_text on macOS
+        help_title = gui_submit.locator('static_text[name="About Deadline Cloud Submitter"]')
+        help_title.wait_visible(timeout=5.0)
+        assert help_title.exists()
 
 
 class TestJobAttachmentsTab:

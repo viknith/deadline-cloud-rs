@@ -4,7 +4,8 @@ fn main() {
     CxxQtBuilder::new_qml_module(
         QmlModule::new("com.amazon.deadline.gui")
             .qml_file("qml/ConfigDialog.qml")
-            .qml_file("qml/SubmitDialog.qml"),
+            .qml_file("qml/SubmitDialog.qml")
+            .qml_file("qml/HostRequirementsTab.qml"),
     )
     .qt_module("Network")
     .files([
@@ -15,6 +16,7 @@ fn main() {
         "src/progress_model.rs",
         "src/parameter_model.rs",
         "src/attachment_model.rs",
+        "src/host_requirements_model.rs",
     ])
     .build();
 }

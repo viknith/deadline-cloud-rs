@@ -56,6 +56,7 @@ pub struct SubmitModelRust {
     storage_profile_id: String,
     canceled: std::sync::Arc<std::sync::atomic::AtomicBool>,
     job_history_bundle_dir: String,
+    host_requirements_json: String,
 }
 
 #[cxx_qt::bridge]
@@ -127,6 +128,10 @@ pub mod qobject {
         /// Append a message to the log.
         #[qinvokable]
         fn append_log(self: Pin<&mut Self>, message: QString);
+
+        /// Set host requirements JSON from the HostRequirementsModel.
+        #[qinvokable]
+        fn set_host_requirements_json(self: Pin<&mut Self>, json: QString);
     }
 }
 
@@ -266,6 +271,7 @@ impl qobject::SubmitModel {
         };
         let initial_status = self.as_ref().initial_status().to_string();
         let submitter_name = self.as_ref().submitter_name().to_string();
+        let hr_json = self.as_ref().rust().host_requirements_json.clone();
 
         // Read additional config values
         let cfg = logic::submit::read_submit_config_fields();
@@ -310,11 +316,17 @@ impl qobject::SubmitModel {
             parameters: job_parameters.clone(),
         };
 
+        let host_requirements: Option<serde_json::Value> = if hr_json.is_empty() {
+            None
+        } else {
+            serde_json::from_str(&hr_json).ok()
+        };
+
         let history_bundle_dir = logic::submit::export_bundle_to_history(
             &settings,
             &[],
             &logic::attachments::AssetReferences::default(),
-            None,
+            host_requirements.as_ref(),
             &submitter_name,
             &job_history_dir,
         )
@@ -500,6 +512,7 @@ impl qobject::SubmitModel {
         let name = self.as_ref().name().to_string();
         let bundle_dir = self.as_ref().job_bundle_dir().to_string();
         let submitter_name = self.as_ref().submitter_name().to_string();
+        let hr_json = self.as_ref().rust().host_requirements_json.clone();
 
         let job_history_dir = deadline_lib::config::config_file::get_setting(
             "settings.job_history_dir",
@@ -514,11 +527,17 @@ impl qobject::SubmitModel {
             ..Default::default()
         };
 
+        let host_requirements: Option<serde_json::Value> = if hr_json.is_empty() {
+            None
+        } else {
+            serde_json::from_str(&hr_json).ok()
+        };
+
         match logic::submit::export_bundle_to_history(
             &settings,
             &[],
             &logic::attachments::AssetReferences::default(),
-            None,
+            host_requirements.as_ref(),
             &submitter_name,
             &job_history_dir,
         ) {
@@ -543,6 +562,10 @@ impl qobject::SubmitModel {
             format!("{current}\n{msg}")
         };
         self.as_mut().set_log_text(QString::from(&new_text));
+    }
+
+    pub fn set_host_requirements_json(mut self: Pin<&mut Self>, json: QString) {
+        self.as_mut().rust_mut().host_requirements_json = json.to_string();
     }
 }
 

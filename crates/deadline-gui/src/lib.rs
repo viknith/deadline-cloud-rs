@@ -6,6 +6,7 @@
 pub mod attachment_model;
 pub mod auth_model;
 pub mod config_model;
+pub mod host_requirements_model;
 pub mod logic;
 pub mod parameter_model;
 pub mod progress_model;

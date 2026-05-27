@@ -38,6 +38,10 @@ pub mod qobject {
         #[qinvokable]
         fn refresh(self: Pin<&mut Self>, farm_id: QString, queue_id: QString, profile: QString);
 
+        /// Load bundle template parameters from disk and merge with existing.
+        #[qinvokable]
+        fn load_bundle_parameters(self: Pin<&mut Self>, bundle_dir: QString);
+
         /// Update a parameter value by name.
         #[qinvokable]
         fn set_parameter_value(self: Pin<&mut Self>, name: QString, value: QString);
@@ -85,6 +89,52 @@ impl qobject::ParameterListModel {
                 }
             });
         });
+    }
+
+    pub fn load_bundle_parameters(mut self: Pin<&mut Self>, bundle_dir: QString) {
+        let dir = bundle_dir.to_string();
+        if dir.is_empty() {
+            return;
+        }
+        let bundle_path = std::path::Path::new(&dir);
+        // Try template.json then template.yaml
+        let template_content = ["template.json", "template.yaml"]
+            .iter()
+            .find_map(|f| std::fs::read_to_string(bundle_path.join(f)).ok());
+        let template_str = match template_content {
+            Some(s) => s,
+            None => return,
+        };
+        let template: serde_json::Value = match serde_yaml::from_str(&template_str) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let bundle_params: Vec<serde_json::Value> = template
+            .get("parameterDefinitions")
+            .and_then(|d| d.as_array())
+            .cloned()
+            .unwrap_or_default();
+        if bundle_params.is_empty() {
+            return;
+        }
+        // Merge with existing queue params (bundle params provide defaults)
+        let current = self.as_ref().parameters_json().to_string();
+        let queue_params: Vec<serde_json::Value> =
+            serde_json::from_str(&current).unwrap_or_default();
+        let merged = parameters::merge_queue_and_job_parameters(&queue_params, &bundle_params);
+        // Enrich with resolved control type
+        let enriched: Vec<serde_json::Value> = merged
+            .into_iter()
+            .map(|mut p| {
+                let control = parameters::get_ui_control(&p);
+                p.as_object_mut()
+                    .unwrap()
+                    .insert("_resolvedControl".to_string(), serde_json::json!(control));
+                p
+            })
+            .collect();
+        let json = serde_json::to_string(&enriched).unwrap_or_else(|_| "[]".to_string());
+        self.as_mut().set_parameters_json(QString::from(&json));
     }
 
     pub fn set_parameter_value(mut self: Pin<&mut Self>, name: QString, value: QString) {
