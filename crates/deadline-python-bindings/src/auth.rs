@@ -129,10 +129,7 @@ pub fn login(
 
     let cancel_cb = on_cancellation_check.as_ref().map(|cb| {
         move || -> bool {
-            Python::attach(|py| {
-                cb.call0(py)
-                    .is_ok_and(|r| r.is_truthy(py).unwrap_or(false))
-            })
+            Python::attach(|py| cb.call0(py).is_ok_and(|r| r.is_truthy(py).unwrap_or(false)))
         }
     });
 
