@@ -90,8 +90,7 @@ impl deadline_lib::bundle::SubmissionHandler for PySubmissionHandler {
         match &self.confirm_cb {
             Some(cb) => Python::attach(|py| {
                 cb.call1(py, (msg, default))
-                    .map(|r| r.is_truthy(py).unwrap_or(default))
-                    .unwrap_or(default)
+                    .map_or(default, |r| r.is_truthy(py).unwrap_or(default))
             }),
             None => default,
         }
@@ -100,8 +99,7 @@ impl deadline_lib::bundle::SubmissionHandler for PySubmissionHandler {
         match &self.continue_cb {
             Some(cb) => Python::attach(|py| {
                 cb.call0(py)
-                    .map(|r| r.is_truthy(py).unwrap_or(true))
-                    .unwrap_or(true)
+                    .map_or(true, |r| r.is_truthy(py).unwrap_or(true))
             }),
             None => true,
         }
@@ -214,8 +212,7 @@ pub fn create_job_from_job_bundle(
                     let _ = dict.set_item("processedBytes", processed);
                     let _ = dict.set_item("totalBytes", total);
                     cb.call1(py, (dict,))
-                        .map(|r| r.is_truthy(py).unwrap_or(true))
-                        .unwrap_or(true)
+                        .map_or(true, |r| r.is_truthy(py).unwrap_or(true))
                 })
             })
         },
@@ -249,8 +246,7 @@ pub fn create_job_from_job_bundle(
                     let _ = dict.set_item("processedBytes", processed);
                     let _ = dict.set_item("totalBytes", total);
                     cb.call1(py, (dict,))
-                        .map(|r| r.is_truthy(py).unwrap_or(true))
-                        .unwrap_or(true)
+                        .map_or(true, |r| r.is_truthy(py).unwrap_or(true))
                 })
             })
         },

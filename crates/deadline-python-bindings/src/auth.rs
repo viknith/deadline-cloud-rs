@@ -131,8 +131,7 @@ pub fn login(
         move || -> bool {
             Python::attach(|py| {
                 cb.call0(py)
-                    .map(|r| r.is_truthy(py).unwrap_or(false))
-                    .unwrap_or(false)
+                    .is_ok_and(|r| r.is_truthy(py).unwrap_or(false))
             })
         }
     });
