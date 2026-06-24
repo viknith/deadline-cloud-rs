@@ -144,7 +144,7 @@ fn timestamp_filters() -> insta::Settings {
 // OS error strings and codes differ across platforms (e.g. Linux
 // "Permission denied (os error 13)" vs macOS "Read-only file system
 // (os error 30)"). Normalize them so error-path snapshots are cross-OS.
-#[cfg(unix)] // only used by the cfg(unix) checkpoint-dir test
+#[cfg(unix)]
 fn os_error_filters() -> insta::Settings {
     let mut settings = insta::Settings::clone_current();
     settings.add_filter(r"[A-Za-z][A-Za-z -]*\(os error \d+\)", "[OS_ERROR]");
@@ -259,7 +259,7 @@ async fn sync_output_queue_no_attachments_returns_error() {
 }
 
 // Checkpoint directory not writable
-#[cfg(unix)] // exercises a Unix read-only path; Windows fails earlier with a different error
+#[cfg(unix)] // Windows fails at a different point (storage profile fetch) before reaching the dir check
 #[tokio::test]
 async fn sync_output_checkpoint_dir_not_writable_returns_error() {
     let harness = TestHarness::new().await;
