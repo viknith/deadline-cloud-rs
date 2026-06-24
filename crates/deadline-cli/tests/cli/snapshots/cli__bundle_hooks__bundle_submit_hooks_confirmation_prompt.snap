@@ -5,24 +5,24 @@ info:
   args:
     - bundle
     - submit
-    - /var/folders/r_/m1d3rb6s2nb559nj4hd77ptm0000gq/T/.tmpeiJmVt/hooks_prompt
+    - /var/folders/r_/m1d3rb6s2nb559nj4hd77ptm0000gq/T/.tmp0E2kJc/hooks_prompt
   env:
     AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
     AWS_CONFIG_FILE: ""
     AWS_DEFAULT_PROFILE: ""
     AWS_DEFAULT_REGION: us-west-2
     AWS_ENDPOINT_URL: ""
-    AWS_ENDPOINT_URL_CLOUDWATCHLOGS: "http://localhost:65023"
-    AWS_ENDPOINT_URL_DEADLINE: "http://localhost:65023"
-    AWS_ENDPOINT_URL_S3: "http://localhost:65023"
-    AWS_ENDPOINT_URL_STS: "http://localhost:65023"
+    AWS_ENDPOINT_URL_CLOUDWATCH_LOGS: "http://localhost:49448"
+    AWS_ENDPOINT_URL_DEADLINE: "http://localhost:49448"
+    AWS_ENDPOINT_URL_S3: "http://localhost:49448"
+    AWS_ENDPOINT_URL_STS: "http://localhost:49448"
     AWS_PROFILE: ""
     AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     AWS_SECURITY_TOKEN: ""
     AWS_SESSION_TOKEN: ""
     AWS_SHARED_CREDENTIALS_FILE: ""
-    DEADLINE_CONFIG_FILE_PATH: /var/folders/r_/m1d3rb6s2nb559nj4hd77ptm0000gq/T/.tmpeiJmVt/config
-    HOME: /var/folders/r_/m1d3rb6s2nb559nj4hd77ptm0000gq/T/.tmpeiJmVt
+    DEADLINE_CONFIG_FILE_PATH: /var/folders/r_/m1d3rb6s2nb559nj4hd77ptm0000gq/T/.tmp0E2kJc/config
+    HOME: /var/folders/r_/m1d3rb6s2nb559nj4hd77ptm0000gq/T/.tmp0E2kJc
 ---
 success: true
 exit_code: 0
@@ -30,13 +30,13 @@ exit_code: 0
 This job bundle contains submission hooks that will execute on your machine:
 
   Pre-submission hooks:
-    [1] sh -c exit 0
+    [1] [HOOK_NOOP]
 
   Bundle: [TEMP_PATH]
 Do you want to run these hooks?
 Submitting to Queue: Test Queue
 
-Running pre-submission hook [1]: sh -c exit 0
+Running pre-submission hook [1]: [HOOK_NOOP]
 Hashing Attachments
 Uploading Attachments
 Waiting for Job to be created...
