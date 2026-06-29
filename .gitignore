@@ -1,5 +1,4 @@
 /target
-.kiro/settings/
 __pycache__/
 *.egg-info/
 .venv/
@@ -19,3 +18,7 @@ deadline.data/
 test_fixtures/job_bundles/large_attachments/inputs/
 .DS_Store
 .qmlls.ini
+
+# Local workflow/tooling (not relevant to other developers)
+.kiro/prompts/
+audit_reports/

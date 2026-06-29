@@ -37,6 +37,52 @@ All core product features are implemented and audited. 1,367+ Rust tests pass.
 
 **#24 and #32 can proceed in parallel.**
 
+### Python Parity Backlog (deadline-cloud-python drift since 2026-05-28)
+
+Tracked in the table below. Updated 2026-06-29 with commits through `f2fa7b5` (v0.59.1).
+
+**Prioritization criteria:** Only GA features that are active by default and
+affect correctness/security are prioritized. Pre-launch features and opt-in
+flags are deferred until they're stable and shipped.
+
+#### Active — GA features (shipped, active by default)
+
+| # | Feature | Python PR | Shipped in | Status |
+|---|---------|-----------|-----------|--------|
+| 35 | preGUI submission hook phase | #1178 | 0.57.3 | Not started |
+| 43 | preGUI hooks security gate (`allow_bundle_hooks` only) | #1221 | 0.59.1 | Not started (depends on #35) |
+| 40 | Consolidate auth status (remove duplicate ListFarms probe) | #1201 | 0.59.1 | Not started |
+| 38 | Apply default client config to all boto clients (user-agent) | #1197 | 0.57.4 | Not started |
+| 37 | Monitor session_id in telemetry | #1184 | 0.57.4 | Not started |
+| 41 | AI agent invocation detection + telemetry | #1210 | 0.59.0 | Not started |
+| 36 | Auto-select farm/queue when only one available | #1015 | 0.57.4 | Not started |
+| 39 | Host requirements populated from job template in gui-submit | #1198 | 0.57.4 | Not started |
+
+#### Deferred — Not GA or opt-in only
+
+| # | Feature | Python PR | Reason |
+|---|---------|-----------|--------|
+| 34 | Multi-region farm support | #1202 | **Not launched.** Feature is in code (0.59.0) but not GA. Will keep changing. Port once stable. |
+| 42 | Conda queue environment v2 channel migration | #1211 | **Opt-in** (`use_deadline_cloud_v2_channel=False` by default). Only matters when DCC repos consume our wheel. |
+
+#### P2 — GUI / test infra
+
+| # | Feature | Python PR | Status |
+|---|---------|-----------|--------|
+| 44 | GUI dataclasses/widgets overhaul (controllers, async runner) | Multiple | Not started |
+| 45 | xa11y harness robustness (relaunch, timeout bump) | #1192, #1186 | Not started |
+| 46 | Drop Python 3.8 from CI matrix | #1200 | Not started |
+| 47 | xa11y bridge warm-up + cache per session | #1206 | Not started |
+
+#### Suggested sequencing (GA items only)
+
+1. **#35 preGUI hooks** + **#43 security gate** — correctness + security, self-contained.
+2. **#40 Auth consolidation** — removes redundant ListFarms API call, simplification.
+3. **#38 Default client config** + **#37 session_id telemetry** + **#41 Agent detection** — small lib changes, telemetry/user-agent correctness.
+4. **#36 Auto-select farm/queue** — UX behavior, GUI + CLI.
+5. **#39 Host requirements from template** — GUI bug fix.
+6. **#44–47** GUI + test infra — align `gui/` + PyO3 contracts.
+
 ### Technical Debt (non-blocking)
 
 | # | Item | Notes |
