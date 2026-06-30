@@ -34,6 +34,7 @@ All core product features are implemented and audited. 1,367+ Rust tests pass.
 | 32 | Worker agent Python bindings (`job_attachments.*`) | Not started | — |
 | 16f-C | DCC dependency switchover (9 repos) | Blocked | 24 |
 | 16f-B | Houdini submitter rewrite | Deferred | Separate repo |
+| 49 | Blender submitter UI tests in CI (cross-repo) | In PR #6 | UI conformance green |
 
 **#24 and #32 can proceed in parallel.**
 
@@ -64,6 +65,7 @@ flags are deferred until they're stable and shipped.
 |---|---------|-----------|--------|
 | 34 | Multi-region farm support | #1202 | **Not launched.** Feature is in code (0.59.0) but not GA. Will keep changing. Port once stable. |
 | 42 | Conda queue environment v2 channel migration | #1211 | **Opt-in** (`use_deadline_cloud_v2_channel=False` by default). Only matters when DCC repos consume our wheel. |
+| 48 | Bulk-sync `gui/` with upstream Python UI code | — | Multi-region streaming (controller, async_runner, combo boxes), auto-select defaults, formatting drift. ~600 changed lines across 15 files. Blocked on #34 stabilizing. Do a cosmetic alignment pass independently. |
 
 #### P2 — GUI / test infra
 
