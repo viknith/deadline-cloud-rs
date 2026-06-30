@@ -3,11 +3,63 @@
 Current in-flight work. Read this at the start of every session before
 consulting the Work Items table in `specs/progress.md`.
 
-## Active: CI/CD Hardening — ✅ Complete
+## Active: Cross-repo UI conformance — PR #6 (nearly green)
 
-**Status:** All phases (1–6) merged. CI/CD hardening is done.
+**Status:** PR branch `ci/cross-repo-ui-tests` — 33-34/35 tests passing on all 3 OS.
+1 test failing consistently across platforms, 1 flaky on Linux only.
 
-**Branch:** `ci/windows-test-twins` (Phase 6, pending PR)
+**Branch:** `ci/cross-repo-ui-tests`
+
+**What the PR does:** Deletes duplicated `pytests/ui_accessibility/` tests and
+replaces them with a workflow that clones `deadline-cloud-python`, installs our
+Rust-backed package (`pip install -e ".[gui]"` + `cargo build -p deadline-cli`),
+and runs their `test/ui/` suite against our binary via `DEADLINE_BINARY`.
+
+### Remaining failure to fix
+
+**`test_json_output_contains_submitted_status_and_job_id`** — fails on all 3 OS:
+```
+AssertionError: No JSON object found in stdout: ''
+```
+
+The test does `deadline bundle gui-submit --output json`, submits via the GUI,
+then expects a JSON object on stdout with `{"status": "SUBMITTED", "jobId": ...}`.
+Our binary's GUI subprocess completes but stdout is empty.
+
+**Root cause to investigate:** Either:
+1. `gui/deadline/client/ui/_gui_entry.py` doesn't print the JSON result after
+   submission completes, or
+2. The Rust CLI in `crates/deadline-cli/src/commands/bundle.rs` (`launch_python_gui`)
+   isn't capturing/forwarding the subprocess stdout correctly.
+
+Look at how the test expects it (`test/ui/test_bundle_gui_submit_json.py` in the
+Python repo) and compare with our `_gui_entry.py`'s `_print_response` function.
+
+**Linux-only flake:** `TestOutputJsonCancel::test_json_output_reports_canceled` —
+same issue (empty stdout) but only fails on Linux, passes macOS/Windows. Likely
+timing-related.
+
+### Follow-on: Blender submitter UI tests
+
+Same pattern as the UI conformance but additionally needs:
+- Blender binary installed on the runner
+- `deadline-cloud-for-blender` addon installed
+- Mock server running
+
+The Blender tests launch Blender which imports `deadline.client` as a Python
+library. Since our package IS installed via `pip install -e ".[gui]"`, this
+should work — Blender would use our `gui/deadline/` package with Rust `_native`
+bindings. Add as a new job in `python.yml` once UI conformance is green.
+
+### Upstream PR pending
+
+`fix/mock-server-localhost` branch on `deadline-cloud-python` — changes mock
+server to bind `localhost` instead of `127.0.0.1`. Once merged, the `sed` patch
+step in our workflow can be removed. File the PR when ready.
+
+---
+
+## Previous: CI/CD Hardening — ✅ Complete
 
 ---
 
