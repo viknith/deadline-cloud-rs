@@ -5,8 +5,8 @@ consulting the Work Items table in `specs/progress.md`.
 
 ## Active: Cross-repo UI conformance — PR #6 (nearly green)
 
-**Status:** PR branch `ci/cross-repo-ui-tests` — 33-34/35 tests passing on all 3 OS.
-1 test failing consistently across platforms, 1 flaky on Linux only.
+**Status:** PR branch `ci/cross-repo-ui-tests` — fix pushed, awaiting CI confirmation.
+Bug fix for failing JSON output test committed + Blender UI tests added.
 
 **Branch:** `ci/cross-repo-ui-tests`
 
@@ -15,41 +15,33 @@ replaces them with a workflow that clones `deadline-cloud-python`, installs our
 Rust-backed package (`pip install -e ".[gui]"` + `cargo build -p deadline-cli`),
 and runs their `test/ui/` suite against our binary via `DEADLINE_BINARY`.
 
-### Remaining failure to fix
+### Fix applied (2026-06-30)
 
-**`test_json_output_contains_submitted_status_and_job_id`** — fails on all 3 OS:
+**`test_json_output_contains_submitted_status_and_job_id`** — was failing on all 3 OS:
 ```
 AssertionError: No JSON object found in stdout: ''
 ```
 
-The test does `deadline bundle gui-submit --output json`, submits via the GUI,
-then expects a JSON object on stdout with `{"status": "SUBMITTED", "jobId": ...}`.
-Our binary's GUI subprocess completes but stdout is empty.
+**Root cause:** `_gui_entry.py` set `submitter._close_event_receiver = submitter.close`
+in JSON mode. This closed the submitter dialog but left the progress dialog open
+(it's a child widget). With the progress dialog still showing, `QApplication.exec()`
+never returned. The Python subprocess hung, the Rust binary hung, and the test's
+fallback SIGTERM killed both processes before stdout was written.
 
-**Root cause to investigate:** Either:
-1. `gui/deadline/client/ui/_gui_entry.py` doesn't print the JSON result after
-   submission completes, or
-2. The Rust CLI in `crates/deadline-cli/src/commands/bundle.rs` (`launch_python_gui`)
-   isn't capturing/forwarding the subprocess stdout correctly.
-
-Look at how the test expects it (`test/ui/test_bundle_gui_submit_json.py` in the
-Python repo) and compare with our `_gui_entry.py`'s `_print_response` function.
+**Fix:** Removed the `_close_event_receiver` override. The Python CLI never
+auto-closes — the test (or caller) dismisses the dialog via accessibility, which
+closes the submitter + child progress dialog, allows `exec()` to return, and the
+JSON is printed normally.
 
 **Linux-only flake:** `TestOutputJsonCancel::test_json_output_reports_canceled` —
-same issue (empty stdout) but only fails on Linux, passes macOS/Windows. Likely
-timing-related.
+same root cause. Should be fixed by the same change.
 
-### Follow-on: Blender submitter UI tests
+### Blender submitter UI tests added (2026-06-30)
 
-Same pattern as the UI conformance but additionally needs:
-- Blender binary installed on the runner
-- `deadline-cloud-for-blender` addon installed
-- Mock server running
-
-The Blender tests launch Blender which imports `deadline.client` as a Python
-library. Since our package IS installed via `pip install -e ".[gui]"`, this
-should work — Blender would use our `gui/deadline/` package with Rust `_native`
-bindings. Add as a new job in `python.yml` once UI conformance is green.
+Added `blender-ui-linux`, `blender-ui-macos`, `blender-ui-windows` jobs to
+`python.yml`. Each installs Blender, builds our Rust binary, installs our
+deadline package + the Blender addon, and runs the Python repo's
+`test/blender_submitter_ui/` suite. Windows uses `continue-on-error: true`.
 
 ### Upstream PR pending
 
