@@ -50,7 +50,6 @@ jobs:
 
       - name: Install Python deps + build extension
         run: |
-          python -m pip install --upgrade pip
           pip install maturin
           python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
           pip install -e ".[test]"
@@ -63,7 +62,7 @@ jobs:
   # deadline-cloud-python's test/ui/ suite against it.
   #
   # How it works:
-  #   1. maturin develop installs our gui/ as the "deadline" package and
+  #   1. pip install -e . installs our gui/ as the "deadline" package and
   #      puts the Rust binary in the venv's bin/.
   #   2. We clone the Python repo just for its test files.
   #   3. DEADLINE_BINARY points the tests at the Rust binary.
@@ -107,10 +106,9 @@ jobs:
       - name: Install Rust-backed deadline package
         working-directory: deadline-cloud-rs
         run: |
-          python -m pip install --upgrade pip
           pip install maturin
           python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
-          maturin develop
+          pip install -e .
           pip install "PySide6-essentials>=6.6" "qtpy>=2.3"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
@@ -118,7 +116,7 @@ jobs:
       - name: Run UI tests under Xvfb + AT-SPI
         working-directory: deadline-cloud-python
         env:
-          DEADLINE_BINARY: ${{ github.workspace }}/deadline-cloud-rs/target/debug/deadline
+          DEADLINE_BINARY: deadline
         run: |
           dbus-run-session -- bash -c '
             set -e
@@ -169,10 +167,9 @@ jobs:
       - name: Install Rust-backed deadline package
         working-directory: deadline-cloud-rs
         run: |
-          python -m pip install --upgrade pip
           pip install maturin
           python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
-          maturin develop
+          pip install -e .
           pip install "PySide6-essentials>=6.6" "qtpy>=2.3"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
@@ -189,7 +186,7 @@ jobs:
       - name: Run UI tests
         working-directory: deadline-cloud-python
         env:
-          DEADLINE_BINARY: ${{ github.workspace }}/deadline-cloud-rs/target/debug/deadline
+          DEADLINE_BINARY: deadline
           QT_ACCESSIBILITY: "1"
         run: |
           python -m pytest \
@@ -230,10 +227,9 @@ jobs:
       - name: Install Rust-backed deadline package
         working-directory: deadline-cloud-rs
         run: |
-          python -m pip install --upgrade pip
           pip install maturin
           python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
-          maturin develop
+          pip install -e .
           pip install "PySide6-essentials>=6.6" "qtpy>=2.3"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
@@ -241,7 +237,7 @@ jobs:
       - name: Run UI tests
         working-directory: deadline-cloud-python
         env:
-          DEADLINE_BINARY: ${{ github.workspace }}\deadline-cloud-rs\target\debug\deadline.exe
+          DEADLINE_BINARY: deadline
           QT_ACCESSIBILITY: "1"
         run: |
           python -m pytest `
