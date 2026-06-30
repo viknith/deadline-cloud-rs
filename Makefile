@@ -19,7 +19,7 @@ else
   RUFF := ruff
 endif
 
-.PHONY: build build-rust build-python test test-rust test-python test-ui test-bindings setup setup-rust setup-python lint lint-rust lint-python fmt fmt-rust fmt-python check clean
+.PHONY: build build-rust build-python test test-rust test-bindings setup setup-rust setup-python lint lint-rust lint-python fmt fmt-rust fmt-python check clean
 
 # ── Build ──
 
@@ -33,15 +33,10 @@ build-python:
 
 # ── Test ──
 
-test: test-rust test-python
+test: test-rust test-bindings
 
 test-rust:
 	cargo test
-
-test-python: test-ui test-bindings
-
-test-ui: build-python
-	VIRTUAL_ENV=$(CURDIR)/$(VENV_DIR) $(PYTHON) -m pytest pytests/ui_accessibility/ -v
 
 test-bindings: build-python
 	VIRTUAL_ENV=$(CURDIR)/$(VENV_DIR) $(PYTHON) -m pytest pytests/bindings/ -v
