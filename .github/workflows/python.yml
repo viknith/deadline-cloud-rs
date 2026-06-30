@@ -111,6 +111,7 @@ jobs:
         working-directory: deadline-cloud-rs
         run: |
           pip install maturin
+          mkdir -p deadline.data/scripts && touch deadline.data/scripts/deadline
           pip install -e ".[gui]"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
@@ -174,6 +175,7 @@ jobs:
         working-directory: deadline-cloud-rs
         run: |
           pip install maturin
+          mkdir -p deadline.data/scripts && touch deadline.data/scripts/deadline
           pip install -e ".[gui]"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
@@ -236,6 +238,7 @@ jobs:
         working-directory: deadline-cloud-rs
         run: |
           pip install maturin
+          mkdir -p deadline.data/scripts && touch deadline.data/scripts/deadline
           pip install -e ".[gui]"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
