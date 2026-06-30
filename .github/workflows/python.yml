@@ -116,6 +116,13 @@ jobs:
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
 
+      - name: Patch mock server to use localhost
+        working-directory: deadline-cloud-python
+        run: |
+          # The Rust SDK prepends "management." to the endpoint host.
+          # management.localhost resolves via /etc/hosts but management.127.0.0.1 does not.
+          sed -i 's/127.0.0.1/localhost/g' test/_common/mock_deadline_backend.py
+
       - name: Run UI tests under Xvfb + AT-SPI
         working-directory: deadline-cloud-python
         env:
@@ -189,6 +196,10 @@ jobs:
           sudo launchctl stop com.apple.tccd 2>/dev/null || true
           sleep 2
 
+      - name: Patch mock server to use localhost
+        working-directory: deadline-cloud-python
+        run: sed -i '' 's/127.0.0.1/localhost/g' test/_common/mock_deadline_backend.py
+
       - name: Run UI tests
         working-directory: deadline-cloud-python
         env:
@@ -242,6 +253,11 @@ jobs:
           pip install -e ".[gui]"
           pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
           pip install botocore boto3 "moto[server,s3]"
+
+      - name: Patch mock server to use localhost
+        working-directory: deadline-cloud-python
+        shell: pwsh
+        run: (Get-Content test/_common/mock_deadline_backend.py) -replace '127.0.0.1','localhost' | Set-Content test/_common/mock_deadline_backend.py
 
       - name: Run UI tests
         working-directory: deadline-cloud-python
