@@ -232,6 +232,7 @@ class SubmitJobProgressDialog(QDialog):
             self.button_box.setStandardButtons(QDialogButtonBox.Ok)
             self.button_box.button(QDialogButtonBox.Ok).setDefault(True)
             self.button_box.button(QDialogButtonBox.Ok).clicked.connect(self.progress_window_closed.emit)
+            self.button_box.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         else:
             if self._is_canceled() or self._warning_dialog_canceled:
                 self.status_label.setText(tr("Submission canceled"))
