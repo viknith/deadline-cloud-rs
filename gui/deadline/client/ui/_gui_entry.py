@@ -95,19 +95,18 @@ def run_gui_submit(
     if not submitter or auto_close:
         return _format_response(output, None, job_bundle_dir, None)
 
-    # In JSON/programmatic output mode, ensure the process exits after
-    # submission so the caller can read JSON from stdout.
+    # In JSON/programmatic output mode, close the submitter dialog after the
+    # progress dialog finishes (success or cancel) so exec() returns and we
+    # can print the result. Without this, the dialog stays open indefinitely
+    # for JobBundle submitters and the process never exits on its own.
     #
-    # On Unix (Linux/macOS): the test harness sends SIGTERM to dismiss the
-    # GUI. The Rust CLI ignores SIGTERM and waits for the Python child to
-    # handle it (via sitecustomize → QApplication.quit()). No auto-close
-    # needed here — SIGTERM handles it.
+    # On Unix: if the process doesn't exit fast enough, the test harness sends
+    # SIGTERM. The Rust CLI's SIGTERM handler keeps the parent alive until the
+    # child finishes printing.
     #
-    # On Windows: there's no graceful SIGTERM equivalent (TerminateProcess
-    # is a hard kill). The process must exit on its own. Close the submitter
-    # dialog so exec() returns, JSON is printed, and the process exits
-    # before the test harness resorts to TerminateProcess.
-    if output == "json" and sys.platform == "win32":
+    # On Windows: there's no graceful SIGTERM equivalent, so the process MUST
+    # exit before the harness resorts to TerminateProcess (hard kill).
+    if output == "json":
         submitter._close_event_receiver = submitter.close
 
     submitter.show()
