@@ -1,4 +1,4 @@
-name: Python Tests (bindings + UI conformance)
+name: Python Tests (bindings + GUI accessibility)
 
 on:
   pull_request:
@@ -17,14 +17,8 @@ permissions:
 env:
   CARGO_INCREMENTAL: 0
   QT_ACCESSIBILITY: "1"
-  PYTHON_REPO: aws-deadline/deadline-cloud
-  PYTHON_REF: mainline
-  BLENDER_VERSION: "5.0.1"
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────
-  # Bindings: tests the raw deadline._native PyO3 API (Rust-repo specific)
-  # ──────────────────────────────────────────────────────────────────────
   bindings:
     name: Bindings (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -51,6 +45,7 @@ jobs:
 
       - name: Install Python deps + build extension
         run: |
+          python -m pip install --upgrade pip
           pip install maturin
           python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
           pip install -e ".[test]"
@@ -58,34 +53,11 @@ jobs:
       - name: Run binding tests
         run: python -m pytest pytests/bindings/ -v
 
-  # ──────────────────────────────────────────────────────────────────────
-  # UI conformance: install our Rust-backed deadline package, then run
-  # deadline-cloud-python's test/ui/ suite against it.
-  #
-  # How it works:
-  #   1. pip install -e . installs our gui/ as the "deadline" package and
-  #      puts the Rust binary in the venv's bin/.
-  #   2. We clone the Python repo just for its test files.
-  #   3. DEADLINE_BINARY points the tests at the Rust binary.
-  #   4. /etc/hosts maps management.localhost -> 127.0.0.1 so the AWS
-  #      SDK's host-prefix resolves to the mock server.
-  # ──────────────────────────────────────────────────────────────────────
-  ui-conformance-linux:
-    name: UI conformance (Linux)
+  ui-accessibility-linux:
+    name: GUI xa11y (Linux)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout deadline-cloud-rs
-        uses: actions/checkout@v4
-        with:
-          path: deadline-cloud-rs
-
-      - name: Checkout deadline-cloud-python (test files only)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.PYTHON_REPO }}
-          ref: ${{ env.PYTHON_REF }}
-          path: deadline-cloud-python
-
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -104,47 +76,17 @@ jobs:
             libdbus-1-3 libx11-xcb1 libxcb-render0 libxcb-shape0 \
             libxcb-xfixes0
 
-      - name: Build Rust binary
-        working-directory: deadline-cloud-rs
-        run: cargo build -p deadline-cli
+      - name: Build Rust workspace
+        run: cargo build --workspace
 
-      - name: Install deadline package + test deps
-        working-directory: deadline-cloud-rs
+      - name: Install Python deps + build extension
         run: |
+          python -m pip install --upgrade pip
           pip install maturin
-          mkdir -p deadline.data/scripts && touch deadline.data/scripts/deadline
-          pip install -e ".[gui]"
-          pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
-          pip install botocore boto3 "moto[server,s3]"
+          python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
+          pip install -e ".[test]"
 
-      - name: Patch mock server to use localhost
-        working-directory: deadline-cloud-python
-        run: |
-          # The Rust SDK prepends "management." to the endpoint host.
-          # management.localhost resolves via /etc/hosts but management.127.0.0.1 does not.
-          sed -i 's/127.0.0.1/localhost/g' test/_common/mock_deadline_backend.py
-
-      - name: Verify test environment
-        working-directory: deadline-cloud-rs
-        env:
-          DEADLINE_BINARY: ${{ github.workspace }}/deadline-cloud-rs/target/debug/deadline
-        run: |
-          echo "=== Binary under test ==="
-          echo "DEADLINE_BINARY=$DEADLINE_BINARY"
-          file "$DEADLINE_BINARY"
-          "$DEADLINE_BINARY" --version || true
-          echo ""
-          echo "=== Python package source ==="
-          python -c "import deadline.client; print(deadline.client.__file__)"
-          python -c "import deadline._native; print(deadline._native.__file__)"
-          echo ""
-          echo "=== Installed deadline package ==="
-          pip show deadline | grep -E "Name|Version|Location"
-
-      - name: Run UI tests under Xvfb + AT-SPI
-        working-directory: deadline-cloud-python
-        env:
-          DEADLINE_BINARY: ${{ github.workspace }}/deadline-cloud-rs/target/debug/deadline
+      - name: Run xa11y tests under Xvfb + AT-SPI
         run: |
           dbus-run-session -- bash -c '
             set -e
@@ -160,31 +102,14 @@ jobs:
             /usr/libexec/at-spi2-registryd &
             sleep 1
 
-            python -m pytest \
-              -o "addopts=" \
-              -p no:cacheprovider \
-              --no-cov \
-              -vvv --numprocesses=1 \
-              --timeout=120 \
-              test/ui/
+            python -m pytest pytests/ui_accessibility/ -v --timeout=120
           '
 
-  ui-conformance-macos:
-    name: UI conformance (macOS)
+  ui-accessibility-macos:
+    name: GUI xa11y (macOS)
     runs-on: macos-latest
     steps:
-      - name: Checkout deadline-cloud-rs
-        uses: actions/checkout@v4
-        with:
-          path: deadline-cloud-rs
-
-      - name: Checkout deadline-cloud-python (test files only)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.PYTHON_REPO }}
-          ref: ${{ env.PYTHON_REF }}
-          path: deadline-cloud-python
-
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -192,18 +117,15 @@ jobs:
       - name: Map *.localhost prefixes to loopback
         run: echo "127.0.0.1 management.localhost scheduling.localhost" | sudo tee -a /etc/hosts
 
-      - name: Build Rust binary
-        working-directory: deadline-cloud-rs
-        run: cargo build -p deadline-cli
+      - name: Build Rust workspace
+        run: cargo build --workspace
 
-      - name: Install deadline package + test deps
-        working-directory: deadline-cloud-rs
+      - name: Install Python deps + build extension
         run: |
+          python -m pip install --upgrade pip
           pip install maturin
-          mkdir -p deadline.data/scripts && touch deadline.data/scripts/deadline
-          pip install -e ".[gui]"
-          pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
-          pip install botocore boto3 "moto[server,s3]"
+          python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
+          pip install -e ".[test]"
 
       - name: Grant accessibility TCC permission
         run: |
@@ -214,60 +136,14 @@ jobs:
           sudo launchctl stop com.apple.tccd 2>/dev/null || true
           sleep 2
 
-      - name: Patch mock server to use localhost
-        working-directory: deadline-cloud-python
-        run: sed -i '' 's/127.0.0.1/localhost/g' test/_common/mock_deadline_backend.py
+      - name: Run xa11y tests
+        run: python -m pytest pytests/ui_accessibility/ -v --timeout=120
 
-      - name: Verify test environment
-        working-directory: deadline-cloud-rs
-        env:
-          DEADLINE_BINARY: ${{ github.workspace }}/deadline-cloud-rs/target/debug/deadline
-        run: |
-          echo "=== Binary under test ==="
-          echo "DEADLINE_BINARY=$DEADLINE_BINARY"
-          file "$DEADLINE_BINARY"
-          "$DEADLINE_BINARY" --version || true
-          echo ""
-          echo "=== Python package source ==="
-          python -c "import deadline.client; print(deadline.client.__file__)"
-          python -c "import deadline._native; print(deadline._native.__file__)"
-          echo ""
-          echo "=== Installed deadline package ==="
-          pip show deadline | grep -E "Name|Version|Location"
-
-      - name: Run UI tests
-        working-directory: deadline-cloud-python
-        env:
-          DEADLINE_BINARY: ${{ github.workspace }}/deadline-cloud-rs/target/debug/deadline
-          QT_ACCESSIBILITY: "1"
-        run: |
-          python -m pytest \
-            -o "addopts=" \
-            -p no:cacheprovider \
-            --no-cov \
-            -vvv --numprocesses=1 \
-            --timeout=120 \
-            test/ui/
-
-  ui-conformance-windows:
-    name: UI conformance (Windows)
+  ui-accessibility-windows:
+    name: GUI xa11y (Windows)
     runs-on: windows-latest
     steps:
-      - name: Enable git long paths
-        run: git config --system core.longpaths true
-
-      - name: Checkout deadline-cloud-rs
-        uses: actions/checkout@v4
-        with:
-          path: deadline-cloud-rs
-
-      - name: Checkout deadline-cloud-python (test files only)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.PYTHON_REPO }}
-          ref: ${{ env.PYTHON_REF }}
-          path: deadline-cloud-python
-
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -276,52 +152,15 @@ jobs:
         shell: pwsh
         run: Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "127.0.0.1 management.localhost scheduling.localhost"
 
-      - name: Build Rust binary
-        working-directory: deadline-cloud-rs
-        run: cargo build -p deadline-cli
+      - name: Build Rust workspace
+        run: cargo build --workspace
 
-      - name: Install deadline package + test deps
-        working-directory: deadline-cloud-rs
+      - name: Install Python deps + build extension
         run: |
+          python -m pip install --upgrade pip
           pip install maturin
-          mkdir -p deadline.data/scripts && touch deadline.data/scripts/deadline
-          pip install -e ".[gui]"
-          pip install -r ../deadline-cloud-python/requirements-ui-testing.txt
-          pip install botocore boto3 "moto[server,s3]"
+          python -c "import os; os.makedirs('deadline.data/scripts', exist_ok=True); open('deadline.data/scripts/deadline', 'w').close()"
+          pip install -e ".[test]"
 
-      - name: Patch mock server to use localhost
-        working-directory: deadline-cloud-python
-        shell: pwsh
-        run: (Get-Content test/_common/mock_deadline_backend.py) -replace '127.0.0.1','localhost' | Set-Content test/_common/mock_deadline_backend.py
-
-      - name: Verify test environment
-        working-directory: deadline-cloud-rs
-        shell: pwsh
-        env:
-          DEADLINE_BINARY: ${{ github.workspace }}\deadline-cloud-rs\target\debug\deadline.exe
-        run: |
-          Write-Host "=== Binary under test ==="
-          Write-Host "DEADLINE_BINARY=$env:DEADLINE_BINARY"
-          & $env:DEADLINE_BINARY --version 2>$null; $true
-          Write-Host ""
-          Write-Host "=== Python package source ==="
-          python -c "import deadline.client; print(deadline.client.__file__)"
-          python -c "import deadline._native; print(deadline._native.__file__)"
-          Write-Host ""
-          Write-Host "=== Installed deadline package ==="
-          pip show deadline | Select-String "Name|Version|Location"
-
-      - name: Run UI tests
-        working-directory: deadline-cloud-python
-        env:
-          DEADLINE_BINARY: ${{ github.workspace }}\deadline-cloud-rs\target\debug\deadline.exe
-          QT_ACCESSIBILITY: "1"
-        run: |
-          python -m pytest `
-            -o "addopts=" `
-            -p no:cacheprovider `
-            --no-cov `
-            -vvv --numprocesses=1 `
-            --timeout=120 `
-            test/ui/
-
+      - name: Run xa11y tests
+        run: python -m pytest pytests/ui_accessibility/ -v --timeout=120

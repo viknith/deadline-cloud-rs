@@ -233,9 +233,10 @@ async fn gui_subprocess_sigterm_preserves_child_stdout() {
     let bin_dir = venv_dir.join("bin");
     std::fs::create_dir_all(&bin_dir).unwrap();
     let fake_python = bin_dir.join("python3");
-    let mut f = std::fs::File::create(&fake_python).unwrap();
-    f.write_all(
-        br#"#!/bin/sh
+    {
+        let mut f = std::fs::File::create(&fake_python).unwrap();
+        f.write_all(
+            br#"#!/bin/sh
 # Fake python3: self-SIGTERM after 1s, trap prints JSON, exits 0.
 # This simulates the sitecustomize SIGTERM handler in the real GUI.
 trap 'printf "{\"status\": \"SUBMITTED\", \"jobId\": \"job-abc123\"}\n"; exit 0' TERM
@@ -243,8 +244,9 @@ trap 'printf "{\"status\": \"SUBMITTED\", \"jobId\": \"job-abc123\"}\n"; exit 0'
 /bin/sleep 30 &
 wait $!
 "#,
-    )
-    .unwrap();
+        )
+        .unwrap();
+    } // File handle closed here before exec
     std::fs::set_permissions(&fake_python, std::fs::Permissions::from_mode(0o755)).unwrap();
 
     // Build the command
