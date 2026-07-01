@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   check-drift:
@@ -91,3 +92,20 @@ jobs:
           name: gui-drift-report
           path: "*.txt"
           if-no-files-found: ignore
+
+      - name: Create GitHub issue on drift
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Only create if no open issue with this title exists
+          TITLE="GUI test drift detected — new tests in deadline-cloud-python"
+          EXISTING=$(gh issue list --state open --search "$TITLE" --json number --jq '.[0].number // empty')
+          if [ -z "$EXISTING" ]; then
+            gh issue create \
+              --title "$TITLE" \
+              --body "The nightly GUI drift check found test functions in \`deadline-cloud-python/test/ui/\` that are not present in \`pytests/ui_accessibility/\`. Please port the missing tests.
+
+          See workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --label "test-drift"
+          fi

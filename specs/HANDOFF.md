@@ -3,11 +3,55 @@
 Current in-flight work. Read this at the start of every session before
 consulting the Work Items table in `specs/progress.md`.
 
-## Active: CI/CD Hardening — ✅ Complete
+## Active: Cross-repo UI conformance — PR #6 (nearly green)
 
-**Status:** All phases (1–6) merged. CI/CD hardening is done.
+**Status:** PR branch `ci/cross-repo-ui-tests` — fix pushed, awaiting CI confirmation.
+Bug fix for failing JSON output test committed + Blender UI tests added.
 
-**Branch:** `ci/windows-test-twins` (Phase 6, pending PR)
+**Branch:** `ci/cross-repo-ui-tests`
+
+**What the PR does:** Deletes duplicated `pytests/ui_accessibility/` tests and
+replaces them with a workflow that clones `deadline-cloud-python`, installs our
+Rust-backed package (`pip install -e ".[gui]"` + `cargo build -p deadline-cli`),
+and runs their `test/ui/` suite against our binary via `DEADLINE_BINARY`.
+
+### Fix applied (2026-06-30)
+
+**`test_json_output_contains_submitted_status_and_job_id`** — was failing on all 3 OS:
+```
+AssertionError: No JSON object found in stdout: ''
+```
+
+**Root cause:** `_gui_entry.py` set `submitter._close_event_receiver = submitter.close`
+in JSON mode. This closed the submitter dialog but left the progress dialog open
+(it's a child widget). With the progress dialog still showing, `QApplication.exec()`
+never returned. The Python subprocess hung, the Rust binary hung, and the test's
+fallback SIGTERM killed both processes before stdout was written.
+
+**Fix:** Removed the `_close_event_receiver` override. The Python CLI never
+auto-closes — the test (or caller) dismisses the dialog via accessibility, which
+closes the submitter + child progress dialog, allows `exec()` to return, and the
+JSON is printed normally.
+
+**Linux-only flake:** `TestOutputJsonCancel::test_json_output_reports_canceled` —
+same root cause. Should be fixed by the same change.
+
+### Blender submitter UI tests added (2026-06-30)
+
+Added `blender-ui-linux`, `blender-ui-macos`, `blender-ui-windows` jobs to
+`python.yml`. Each installs Blender, builds our Rust binary, installs our
+deadline package + the Blender addon, and runs the Python repo's
+`test/blender_submitter_ui/` suite. Windows uses `continue-on-error: true`.
+
+### Upstream PR pending
+
+`fix/mock-server-localhost` branch on `deadline-cloud-python` — changes mock
+server to bind `localhost` instead of `127.0.0.1`. Once merged, the `sed` patch
+step in our workflow can be removed. File the PR when ready.
+
+---
+
+## Previous: CI/CD Hardening — ✅ Complete
 
 ---
 

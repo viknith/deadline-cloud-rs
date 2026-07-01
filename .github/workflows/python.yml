@@ -3,7 +3,7 @@ name: Python Tests (bindings + GUI accessibility)
 on:
   pull_request:
     paths:
-      - "crates/deadline-python-bindings/**"
+      - "crates/**"
       - "gui/**"
       - "pytests/**"
       - "pyproject.toml"

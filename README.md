@@ -1,5 +1,9 @@
 # deadline-cloud-rs
 
+[![CI](https://github.com/viknith/deadline-cloud-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/viknith/deadline-cloud-rs/actions/workflows/ci.yml)
+[![GUI Drift](https://github.com/viknith/deadline-cloud-rs/actions/workflows/gui-drift.yml/badge.svg)](https://github.com/viknith/deadline-cloud-rs/actions/workflows/gui-drift.yml)
+[![Conformance](https://github.com/viknith/deadline-cloud-rs/actions/workflows/conformance.yml/badge.svg)](https://github.com/viknith/deadline-cloud-rs/actions/workflows/conformance.yml)
+
 Rust implementation of the [AWS Deadline Cloud](https://aws.amazon.com/deadline-cloud/)
 client software: CLI, GUI FFI layer, and shared library crates.
 

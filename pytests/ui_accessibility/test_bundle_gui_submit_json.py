@@ -44,6 +44,17 @@ class TestOutputJsonSuccess:
         ) as app:
             app.wait_farm_resolved()
             app.submit_and_ok()
+            # Diagnostic: did the process exit on its own after auto-close?
+            import time, sys
+            t0 = time.monotonic()
+            try:
+                app.proc.wait(timeout=10)
+                elapsed = time.monotonic() - t0
+                print(f"[diag] Process exited on its own in {elapsed:.2f}s, rc={app.proc.returncode}", file=sys.stderr)
+            except Exception as e:
+                elapsed = time.monotonic() - t0
+                print(f"[diag] Process did NOT exit after {elapsed:.2f}s: {e}", file=sys.stderr)
+                print(f"[diag] proc.poll()={app.proc.poll()}", file=sys.stderr)
             app.close("Cancel")
             stdout, _ = app.proc.communicate(timeout=5)
 
@@ -70,6 +81,13 @@ class TestOutputJsonCancel:
             app.wait_farm_resolved()
             app.submit_then_cancel()
             app.dismiss_progress_close()
+            # In JSON mode the process exits on its own after printing the
+            # result. Wait for it before calling close() so we don't race
+            # against TerminateProcess on Windows (which is a hard kill).
+            try:
+                app.proc.wait(timeout=10)
+            except Exception:
+                pass
             app.close("Cancel")
             stdout, _ = app.proc.communicate(timeout=5)
 

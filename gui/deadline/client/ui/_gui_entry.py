@@ -95,10 +95,17 @@ def run_gui_submit(
     if not submitter or auto_close:
         return _format_response(output, None, job_bundle_dir, None)
 
-    # In JSON/programmatic output mode, always close after the progress
-    # dialog finishes (success or cancel) so exec() returns and we can
-    # print the result. Without this, the dialog stays open indefinitely
-    # for JobBundle submitters.
+    # In JSON/programmatic output mode, close the submitter dialog after the
+    # progress dialog finishes (success or cancel) so exec() returns and we
+    # can print the result. Without this, the dialog stays open indefinitely
+    # for JobBundle submitters and the process never exits on its own.
+    #
+    # On Unix: if the process doesn't exit fast enough, the test harness sends
+    # SIGTERM. The Rust CLI's SIGTERM handler keeps the parent alive until the
+    # child finishes printing.
+    #
+    # On Windows: there's no graceful SIGTERM equivalent, so the process MUST
+    # exit before the harness resorts to TerminateProcess (hard kill).
     if output == "json":
         submitter._close_event_receiver = submitter.close
 

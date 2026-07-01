@@ -201,3 +201,76 @@ async fn config_help_lists_gui() {
     let harness = TestHarness::new().await;
     assert_cmd_snapshot!(harness.cmd(&["config", "--help"]));
 }
+
+// ── SIGTERM handling (Unix only) ───────────────────────────────────
+
+// When the process group receives SIGTERM while the GUI subprocess is
+// running, the Rust binary should NOT die before the child finishes.
+// The child handles SIGTERM (prints JSON, exits), and the parent
+// forwards the child's stdout.
+#[cfg(unix)]
+#[tokio::test]
+async fn gui_subprocess_sigterm_preserves_child_stdout() {
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
+
+    let harness = TestHarness::new().await;
+    let tmp = tempfile::tempdir().unwrap();
+
+    // Create a fake bundle directory (passes validation)
+    let bundle_dir = tmp.path().join("bundle");
+    std::fs::create_dir(&bundle_dir).unwrap();
+    std::fs::write(
+        bundle_dir.join("template.json"),
+        r#"{"specificationVersion":"jobtemplate-2023-09","name":"test","steps":[]}"#,
+    )
+    .unwrap();
+
+    // Create a fake python3 that self-SIGTERMs after a brief delay,
+    // simulating the real flow where the Python GUI receives SIGTERM
+    // from the test harness, handles it, prints JSON, and exits.
+    let venv_dir = tmp.path().join("venv");
+    let bin_dir = venv_dir.join("bin");
+    std::fs::create_dir_all(&bin_dir).unwrap();
+    let fake_python = bin_dir.join("python3");
+    {
+        let mut f = std::fs::File::create(&fake_python).unwrap();
+        f.write_all(
+            br#"#!/bin/sh
+# Fake python3: self-SIGTERM after 1s, trap prints JSON, exits 0.
+# This simulates the sitecustomize SIGTERM handler in the real GUI.
+trap 'printf "{\"status\": \"SUBMITTED\", \"jobId\": \"job-abc123\"}\n"; exit 0' TERM
+(/bin/sleep 1 && kill -TERM $$) &
+/bin/sleep 30 &
+wait $!
+"#,
+        )
+        .unwrap();
+    } // File handle closed here before exec
+    std::fs::set_permissions(&fake_python, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    // Build the command
+    let mut cmd = harness.cmd(&[
+        "bundle",
+        "gui-submit",
+        "--output",
+        "json",
+        bundle_dir.to_str().unwrap(),
+    ]);
+    cmd.env("VIRTUAL_ENV", venv_dir.to_str().unwrap());
+    cmd.env("PATH", "/bin:/usr/bin");
+
+    // Run and wait for completion
+    let output = cmd.output().unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("SUBMITTED"),
+        "Expected JSON output from child after SIGTERM, got stdout: {stdout:?}, stderr: {:?}",
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(stdout.contains("job-abc123"));
+
+    // Exit code 0: the Rust binary survived and forwarded the output
+    assert_eq!(output.status.code(), Some(0));
+}
