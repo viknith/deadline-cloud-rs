@@ -95,12 +95,20 @@ def run_gui_submit(
     if not submitter or auto_close:
         return _format_response(output, None, job_bundle_dir, None)
 
-    # In JSON/programmatic output mode, always close after the progress
+    # In JSON/programmatic output mode, quit the app after the progress
     # dialog finishes (success or cancel) so exec() returns and we can
     # print the result. Without this, the dialog stays open indefinitely
-    # for JobBundle submitters.
+    # for JobBundle submitters. Using QApplication.quit() ensures ALL
+    # windows are closed and the event loop exits immediately.
     if output == "json":
-        submitter._close_event_receiver = submitter.close
+        from qtpy.QtWidgets import QApplication as _QApp
+
+        def _quit_app():
+            _QApp.instance().quit()
+
+        # Store on the instance to prevent garbage collection
+        submitter._json_quit_handler = _quit_app
+        submitter._close_event_receiver = _quit_app
 
     submitter.show()
 
