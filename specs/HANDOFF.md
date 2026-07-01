@@ -3,45 +3,32 @@
 Current in-flight work. Read this at the start of every session before
 consulting the Work Items table in `specs/progress.md`.
 
-## Active: Cross-repo UI conformance — PR #6 (nearly green)
+## Active: No active work item
 
-**Status:** PR branch `ci/cross-repo-ui-tests` — fix pushed, awaiting CI confirmation.
-Bug fix for failing JSON output test committed + Blender UI tests added.
+Pick from the Remaining Work Items table in `specs/progress.md`.
 
-**Branch:** `ci/cross-repo-ui-tests`
+---
 
-**What the PR does:** Deletes duplicated `pytests/ui_accessibility/` tests and
-replaces them with a workflow that clones `deadline-cloud-python`, installs our
-Rust-backed package (`pip install -e ".[gui]"` + `cargo build -p deadline-cli`),
-and runs their `test/ui/` suite against our binary via `DEADLINE_BINARY`.
+## Previous: UI Test Infrastructure + SIGTERM Fix — ✅ Merged (PR #6)
 
-### Fix applied (2026-06-30)
+**What was delivered:**
+- SIGTERM handling in `launch_python_gui` — Rust binary ignores SIGTERM
+  while waiting for the Python child, then forwards its stdout. Prevents
+  lost JSON output when process group receives SIGTERM.
+- `pytests/ui_accessibility/` tests now launch the Rust binary (not
+  `_gui_entry.py` directly), testing the full CLI → subprocess → GUI path.
+- `gui-drift.yml` nightly drift detector with auto-issue on failure.
+- Deleted `gui/deadline/__init__.py` (implicit namespace package for DCC addon compat).
+- Added `gui/deadline/client/_version.py` (re-exports version from Rust `_native`).
+- CI status badges in README.
 
-**`test_json_output_contains_submitted_status_and_job_id`** — was failing on all 3 OS:
-```
-AssertionError: No JSON object found in stdout: ''
-```
-
-**Root cause:** `_gui_entry.py` set `submitter._close_event_receiver = submitter.close`
-in JSON mode. This closed the submitter dialog but left the progress dialog open
-(it's a child widget). With the progress dialog still showing, `QApplication.exec()`
-never returned. The Python subprocess hung, the Rust binary hung, and the test's
-fallback SIGTERM killed both processes before stdout was written.
-
-**Fix:** Removed the `_close_event_receiver` override. The Python CLI never
-auto-closes — the test (or caller) dismisses the dialog via accessibility, which
-closes the submitter + child progress dialog, allows `exec()` to return, and the
-JSON is printed normally.
-
-**Linux-only flake:** `TestOutputJsonCancel::test_json_output_reports_canceled` —
-same root cause. Should be fixed by the same change.
-
-### Blender submitter UI tests added (2026-06-30)
-
-Added `blender-ui-linux`, `blender-ui-macos`, `blender-ui-windows` jobs to
-`python.yml`. Each installs Blender, builds our Rust binary, installs our
-deadline package + the Blender addon, and runs the Python repo's
-`test/blender_submitter_ui/` suite. Windows uses `continue-on-error: true`.
+**Decisions made:**
+- Cross-repo clone-and-run was attempted and reverted. PYTHONPATH conflicts
+  caused Blender tests to exercise wrong code, and SIGTERM architectural
+  mismatch made tests fragile. Own tests + drift detection is more stable.
+- Blender submitter UI tests deferred — needs a purpose-built test that
+  explicitly uses our installed package (not the Python repo's fixture which
+  injects their src/ on PYTHONPATH).
 
 ### Upstream PR pending
 

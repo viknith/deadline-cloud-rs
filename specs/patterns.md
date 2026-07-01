@@ -310,6 +310,16 @@ let result = launch_python_gui("gui-submit", &params_json, install_gui)?;
   GUI prints result JSON to stdout.
 - **Python + PySide6 required.** GUI commands need Python 3.9+ and
   PySide6 installed. Use `--install-gui` to auto-install.
+- **SIGTERM resilience (Unix).** `launch_python_gui` ignores SIGTERM
+  while waiting for the child. The Python subprocess handles SIGTERM
+  via a sitecustomize shim (`QApplication.quit()` → print JSON → exit).
+  The Rust parent forwards the child's stdout regardless of signal.
+  If the child was killed by SIGTERM but produced output, forward it
+  instead of treating the non-zero exit as an error.
+- **Namespace package.** `gui/deadline/` has no `__init__.py` — it's an
+  implicit namespace package. This allows DCC addons (Blender, Maya, etc.)
+  to contribute sub-packages (`deadline.blender_submitter`) without
+  conflicts. Do not add `gui/deadline/__init__.py`.
 
 
 ## Porting a CLI Command: Parity Checklist

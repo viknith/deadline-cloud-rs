@@ -34,7 +34,7 @@ All core product features are implemented and audited. 1,367+ Rust tests pass.
 | 32 | Worker agent Python bindings (`job_attachments.*`) | Not started | — |
 | 16f-C | DCC dependency switchover (9 repos) | Blocked | 24 |
 | 16f-B | Houdini submitter rewrite | Deferred | Separate repo |
-| 49 | Blender submitter UI tests in CI (cross-repo) | In PR #6 | UI conformance green |
+| 49 | Blender submitter UI tests in CI | Deferred | Needs purpose-built test (cross-repo PYTHONPATH conflicts) |
 
 **#24 and #32 can proceed in parallel.**
 
