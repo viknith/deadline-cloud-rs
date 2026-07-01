@@ -631,15 +631,83 @@ pub(crate) fn launch_python_gui(
         cmd.arg("--install-gui");
     }
 
-    let output = cmd
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::inherit())
-        .output()
-        .map_err(|e| {
-            CliError::Operation(format!("Failed to launch GUI subprocess ({python}): {e}"))
-        })?;
+    // On Unix, ignore SIGTERM while waiting for the GUI subprocess to exit.
+    // The Python child process handles SIGTERM itself (via a sitecustomize
+    // shim that calls QApplication.quit()), prints its result to stdout, and
+    // exits cleanly. If we didn't ignore SIGTERM here, the Rust binary would
+    // die before reading the child's output — losing the JSON result that
+    // callers (tests, scripts) expect on stdout.
+    //
+    // We must set SIG_IGN AFTER spawning the child, because signal dispositions
+    // are inherited across fork+exec — if we ignored before spawn, the child's
+    // SIGTERM trap/handler would also be suppressed.
+    let output = {
+        #[cfg(unix)]
+        let result = {
+            let child = cmd
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::inherit())
+                .spawn()
+                .map_err(|e| {
+                    CliError::Operation(format!("Failed to launch GUI subprocess ({python}): {e}"))
+                })?;
+
+            // Now that the child is running with default SIGTERM handling,
+            // ignore SIGTERM in the parent so we survive until the child exits.
+            #[allow(
+                unsafe_code,
+                reason = "libc::signal requires unsafe FFI; no memory safety risk"
+            )]
+            // SAFETY: `libc::signal(SIGTERM, SIG_IGN)` modifies global process signal
+            // disposition. No memory unsafety — the signal is simply discarded by the kernel.
+            unsafe {
+                libc::signal(libc::SIGTERM, libc::SIG_IGN);
+            }
+
+            let result = child.wait_with_output().map_err(|e| {
+                CliError::Operation(format!("Failed to wait for GUI subprocess ({python}): {e}"))
+            });
+
+            // Restore default SIGTERM handling after the child exits.
+            #[allow(
+                unsafe_code,
+                reason = "libc::signal requires unsafe FFI; no memory safety risk"
+            )]
+            // SAFETY: `libc::signal(SIGTERM, SIG_DFL)` restores the kernel's default
+            // action for SIGTERM (process termination). No memory safety implications.
+            unsafe {
+                libc::signal(libc::SIGTERM, libc::SIG_DFL);
+            }
+
+            result
+        };
+
+        #[cfg(not(unix))]
+        let result = cmd
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::inherit())
+            .output()
+            .map_err(|e| {
+                CliError::Operation(format!("Failed to launch GUI subprocess ({python}): {e}"))
+            });
+
+        result?
+    };
 
     if !output.status.success() {
+        // On Unix, if the child was killed by SIGTERM but still produced output
+        // (e.g., the Python GUI's SIGTERM handler printed JSON before exiting),
+        // forward that output instead of treating it as an error.
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::ExitStatusExt;
+            let was_sigterm = output.status.signal() == Some(libc::SIGTERM);
+            let has_output = !output.stdout.is_empty();
+            if was_sigterm && has_output {
+                return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+            }
+        }
+
         let code = output.status.code().unwrap_or(1);
         if code == 1 {
             // PySide6 not installed or user canceled
