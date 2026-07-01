@@ -95,16 +95,12 @@ def run_gui_submit(
     if not submitter or auto_close:
         return _format_response(output, None, job_bundle_dir, None)
 
-    # In JSON/programmatic output mode, quit the app after the progress
+    # In JSON/programmatic output mode, always close after the progress
     # dialog finishes (success or cancel) so exec() returns and we can
-    # print the result. Without this, the process stays alive indefinitely
-    # and must be killed externally. On the Python CLI, a SIGTERM handler
-    # calls QApplication.quit() to achieve the same effect, but our Rust
-    # parent process doesn't forward SIGTERM gracefully.
+    # print the result. Without this, the dialog stays open indefinitely
+    # for JobBundle submitters.
     if output == "json":
-        from qtpy.QtWidgets import QApplication as _QApp
-
-        submitter._close_event_receiver = lambda: _QApp.instance().quit()
+        submitter._close_event_receiver = submitter.close
 
     submitter.show()
 
