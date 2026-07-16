@@ -1,6 +1,59 @@
 # Output Formatting and Error Suggestions
 
 How the CLI formats output and helps users recover from errors.
+
+## Output Format Auto-Detection
+
+Commands that accept `--output` (see table below) auto-detect the
+format when the flag is omitted:
+
+| stdout is... | Resolved format | Rationale |
+|-------------|----------------|-----------|
+| Interactive TTY | `verbose` | Human at a terminal wants readable output |
+| Not a TTY (pipe, redirect, closed) | `json` | Scripts, CI, and agents want parseable output |
+
+An explicit `--output verbose` or `--output json` always wins regardless
+of TTY state.
+
+### Commands with `--output`
+
+| Command | Accepts `--output` |
+|---------|-------------------|
+| `auth status` | ✓ |
+| `config show` | ✓ |
+| `bundle gui-submit` | ✓ |
+| `job download-output` | ✓ |
+| `job download-input` | ✓ |
+| `job wait` | ✓ |
+| `job logs` | ✓ |
+
+Commands not in this table are unaffected — they produce a fixed format.
+
+### Edge Cases
+
+- **Broken stdout** (stream closed, `isatty()` errors): treated as
+  non-TTY → json.
+- **Case sensitivity**: `--output` values are case-insensitive
+  (`JSON`, `Json`, `json` all resolve to json).
+- **Subprocess tests**: CLI invoked as a subprocess (no TTY) defaults
+  to json. Tests asserting verbose output must pass `--output verbose`
+  explicitly.
+
+### Help Text
+
+The `--output` help text documents the auto-detection:
+
+> Specifies the output format of the messages printed to stdout.
+> VERBOSE: Displays messages in a human-readable text format.
+> JSON: Displays messages in JSON line format, so that the info can be
+> easily parsed/consumed by custom scripts.
+> When this option is not specified, the format is chosen automatically:
+> VERBOSE when stdout is an interactive terminal, and JSON otherwise
+> (for example when the output is piped, redirected, or run without a
+> TTY such as in CI or by an agent).
+
+---
+
 ## Resource Suggestions on Error
 
 When an API call fails with `AccessDeniedException`, `ResourceNotFoundException`,

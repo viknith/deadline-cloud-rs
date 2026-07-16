@@ -54,7 +54,7 @@ defaults.aws_profile_name  (section_format: "profile-{}")
         └── defaults.job_attachments_file_system
 ```
 
-### All 21 Settings
+### All 23 Settings
 
 | Setting | Default | Depends On | Description |
 |---------|---------|------------|-------------|
@@ -79,6 +79,8 @@ defaults.aws_profile_name  (section_format: "profile-{}")
 | `settings.allow_bundle_hooks` | `"false"` | — | Allow execution of hooks from job bundle hooks files |
 | `settings.allow_environment_hooks` | `"false"` | — | Allow execution of hooks from DEADLINE_HOOKS_DIR |
 | `settings.submitter_update_notification` | `"true"` | — | Enable DCC submitter update notification checks |
+| `settings.https_proxy` | `""` | — | HTTPS proxy URL for Deadline Cloud API calls (see [session-cache § Proxy and CA Bundle](../api/session-cache.md#proxy-and-ca-bundle)) |
+| `settings.ca_bundle` | `""` | — | Filesystem path to a PEM CA certificate bundle for TLS verification (is_path: true) |
 
 ## Key Design Decisions
 

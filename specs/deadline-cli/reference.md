@@ -43,8 +43,11 @@ active profile. Missing required IDs produce exit code 2.
 command, affecting both credential resolution and which config section is
 read.
 
-**Output format:** Commands with `--output` accept `verbose` (YAML,
-default) or `json`. Some BETA commands use `--json` as a flag instead.
+**Output format:** Commands with `--output` accept `verbose` or `json`.
+When omitted, the format is auto-detected: `verbose` if stdout is an
+interactive TTY, `json` otherwise (pipes, redirection, CI, agents).
+An explicit `--output` always wins. See `output-and-errors.md` for
+details. Some BETA commands use `--json` as a flag instead.
 
 **Confirmation:** Mutating commands ask for confirmation unless `--yes` or
 config `settings.auto_accept` is set. Declined → exit 1.
