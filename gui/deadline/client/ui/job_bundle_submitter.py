@@ -34,7 +34,7 @@ from ..job_bundle.parameters import (
 from ..job_bundle.saver import save_yaml_or_json_to_file
 from ..job_bundle.submission import AssetReferences
 from ._utils import tr
-from .dataclasses import JobBundleSettings
+from .dataclasses import HostRequirements, JobBundleSettings
 from .dialogs.submit_job_to_deadline_dialog import (
     JobBundlePurpose,
     SubmitJobToDeadlineDialog,
@@ -42,6 +42,30 @@ from .dialogs.submit_job_to_deadline_dialog import (
 from .widgets.job_bundle_settings_tab import JobBundleSettingsWidget
 
 logger = getLogger(__name__)
+
+
+def _resolve_template_host_requirements(template: dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Determine the host requirements to pre-fill the GUI with, based on the job
+    template's steps.
+
+    - If there is a single step, its ``hostRequirements`` are used.
+    - If there are multiple steps that all declare the same ``hostRequirements``,
+      those are used.
+    - If the steps declare differing (or partially missing) ``hostRequirements``,
+      ``None`` is returned so the GUI leaves the host requirements deactivated.
+    """
+    steps = template.get("steps") or []
+    if not steps:
+        return None
+
+    host_requirements = [step.get("hostRequirements") for step in steps]
+    first = host_requirements[0]
+    if not first:
+        return None
+    if all(req == first for req in host_requirements[1:]):
+        return first
+    return None
 
 
 def _validate_job_parameters_against_definitions(
@@ -295,10 +319,20 @@ def show_job_bundle_submitter(
     for parameter in job_parameters_dict.values():
         initial_shared_parameter_values[parameter["name"]] = parameter["value"]
 
+    # Pre-fill the host requirements tab from the job template's steps so the GUI
+    # reflects the requirements already declared in the bundle.
+    template_host_requirements = _resolve_template_host_requirements(template or {})
+    initial_host_requirements = (
+        HostRequirements.from_dict(template_host_requirements)
+        if template_host_requirements
+        else None
+    )
+
     submitter_dialog = SubmitJobToDeadlineDialog(
         job_setup_widget_type=JobBundleSettingsWidget,
         initial_job_settings=initial_settings,
         show_host_requirements_tab=True,
+        host_requirements=initial_host_requirements,
         initial_shared_parameter_values=initial_shared_parameter_values,
         auto_detected_attachments=asset_references,
         attachments=AssetReferences(),

@@ -55,6 +55,12 @@ class _DeadlineResourceListComboBoxController(QWidget):
 
         self.resource_name = resource_name
         self.config: Optional[ConfigParser] = None
+        # True only while self.config is the live module-level config object
+        # (i.e. set_config was handed config_file.read_config()). When a caller
+        # injects a different parser (e.g. the config dialog's deep copy with
+        # unsaved edits layered on), this stays False so _sync_config won't
+        # clobber those pending edits by re-reading from disk.
+        self._config_tracks_global: bool = False
         self._controller = DeadlineUIController.getInstance()
 
         self._build_ui()
@@ -105,6 +111,7 @@ class _DeadlineResourceListComboBoxController(QWidget):
 
     def _handle_list_update(self, items_list: List) -> None:
         """Handle the list update from the controller."""
+        self._sync_config()
         with block_signals(self.box):
             self.box.clear()
             for item in items_list:
@@ -117,6 +124,7 @@ class _DeadlineResourceListComboBoxController(QWidget):
 
     def _handle_loading_state(self, is_loading: bool) -> None:
         """Handle loading state changes."""
+        self._sync_config()
         if is_loading:
             # Show refreshing indicator
             selected_id = config_file.get_setting(self._get_setting_name(), config=self.config)
@@ -147,7 +155,25 @@ class _DeadlineResourceListComboBoxController(QWidget):
     def set_config(self, config: ConfigParser) -> None:
         """Updates the AWS Deadline Cloud config object the control uses."""
         self.config = config
+        self._config_tracks_global = config is config_file.read_config()
         self._controller.set_config(config)
+
+    def _sync_config(self) -> None:
+        """Re-point self.config at the live global config before a display sync.
+
+        set_setting (used by the controller's select_* cascade) writes to disk,
+        which makes the next read_config() detect the mtime change and build a
+        new ConfigParser, replacing the cached one. A combo that keeps its original
+        reference in self.config would then read stale values — e.g. after selecting
+        a farm, the old queue/storage-profile IDs stored under that farm's section
+        would still be visible.
+
+        Only re-read when self.config is tracking the live global object. If a
+        caller injected its own parser (e.g. the config dialog's copy carrying
+        unsaved edits), re-reading would silently discard those edits.
+        """
+        if self.config is not None and self._config_tracks_global:
+            self.config = config_file.read_config()
 
     def clear_list(self) -> None:
         """

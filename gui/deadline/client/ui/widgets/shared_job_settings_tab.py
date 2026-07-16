@@ -420,11 +420,11 @@ class SharedJobPropertiesWidget(QGroupBox):  # pylint: disable=too-few-public-me
 
 class DeadlineCloudSettingsWidget(QGroupBox):
     """
-    UI component for the Deadline Cloud settings.
+    UI component for the Job submission settings.
     """
 
     def __init__(self, *, parent: Optional[QWidget] = None):
-        super().__init__(tr("Deadline Cloud settings"), parent=parent)
+        super().__init__(tr("Job submission settings"), parent=parent)
         self.deadline_settings: Dict[str, Any] = {"counter": -1}
         self.layout = QFormLayout(self)
         self.layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
