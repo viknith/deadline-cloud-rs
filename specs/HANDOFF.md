@@ -9,6 +9,53 @@ Pick from the Remaining Work Items table in `specs/progress.md`.
 
 ---
 
+## Previous: Python GUI Bug Fixes (#39, #56) + Progress Cleanup — ✅ Done
+
+**What was delivered:**
+- **#56** — Ported `_sync_config` / `_config_tracks_global` to
+  `gui/deadline/client/ui/widgets/_deadline_list_combo_boxes.py`. Prevents
+  stale queue/storage profile IDs showing after farm change.
+- **#39** — Added `HostRequirements.from_dict()` classmethod to
+  `gui/deadline/client/ui/dataclasses/__init__.py` and
+  `_resolve_template_host_requirements()` to `job_bundle_submitter.py`.
+  Host requirements tab now pre-fills from the job template's steps.
+- **Progress table cleanup** — marked #40, #38 as "Already correct" (Rust
+  already does what the Python PRs fixed). Marked #55 as N/A (code path
+  doesn't exist in Rust). Marked #37, #36 as N/A for spec.
+
+**Items remaining that need specs:** Only #41 (AI agent detection).
+
+---
+
+## Previous: Hooks Cluster Spec Writing (#51, #52, #54) — ✅ Done
+
+**What was delivered:**
+- Updated `specs/deadline-lib/bundle/submission-hooks.md` with three new
+  behavioral sections covering:
+  - **#51** Stderr streaming (progress output) — live line-by-line stderr
+    forwarding with prefix format, lingering child grace period, no
+    stderr in failure report.
+  - **#52** Multi-source execution — separate execution contexts per source,
+    payload threading between sources, source-labeled confirmation messages
+    with "Location:" instead of "Bundle:".
+  - **#54** Qt-free pre-GUI hooks API for DCC submitters — headless entry
+    point, empty-bundle-dir safety, generic output application, confirmation
+    callback injection.
+- Updated "Where Each Phase Runs" table to reflect DCC pre-GUI support.
+- Added "Test Strategy" section mapping behavioral rules to test categories.
+- Updated "Differences from Python" table.
+- Marked specs ✅ in `specs/progress.md` for #51, #52, #54.
+
+**Decisions made:**
+- All three features are updates to the existing spec (not new files) since
+  they're additive on the hooks subsystem.
+- Spec content is behavioral (no implementation details like function names,
+  struct layouts, or threading primitives).
+- The spec does NOT cover #35's parameter re-resolution (that was already
+  specced). These three are the extensions that build on #35.
+
+---
+
 ## Previous: UI Test Infrastructure + SIGTERM Fix — ✅ Merged (PR #6)
 
 **What was delivered:**

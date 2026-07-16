@@ -40,30 +40,41 @@ All core product features are implemented and audited. 1,367+ Rust tests pass.
 
 ### Python Parity Backlog (deadline-cloud-python drift since 2026-05-28)
 
-Tracked in the table below. Updated 2026-06-29 with commits through `f2fa7b5` (v0.59.1).
+Tracked in the table below. Updated 2026-07-15 with commits through `695f137` (v0.60.1).
 
 **Prioritization criteria:** Only GA features that are active by default and
 affect correctness/security are prioritized. Pre-launch features and opt-in
 flags are deferred until they're stable and shipped.
 
+**Conformance status:** Nightly conformance is RED (5 new failures since ~July 11).
+All failures are from unimplemented features: #50 (proxy config, 4 tests) and
+#35 (hook parameter re-resolution, 1 test).
+
 #### Active — GA features (shipped, active by default)
 
-| # | Feature | Python PR | Shipped in | Status |
-|---|---------|-----------|-----------|--------|
-| 35 | preGUI submission hook phase | #1178 | 0.57.3 | Not started |
-| 43 | preGUI hooks security gate (`allow_bundle_hooks` only) | #1221 | 0.59.1 | Not started (depends on #35) |
-| 40 | Consolidate auth status (remove duplicate ListFarms probe) | #1201 | 0.59.1 | Not started |
-| 38 | Apply default client config to all boto clients (user-agent) | #1197 | 0.57.4 | Not started |
-| 37 | Monitor session_id in telemetry | #1184 | 0.57.4 | Not started |
-| 41 | AI agent invocation detection + telemetry | #1210 | 0.59.0 | Not started |
-| 36 | Auto-select farm/queue when only one available | #1015 | 0.57.4 | Not started |
-| 39 | Host requirements populated from job template in gui-submit | #1198 | 0.57.4 | Not started |
+| # | Feature | Python PR | Shipped in | Status | Spec | Breaks Conformance? |
+|---|---------|-----------|-----------|--------|------|-------------------|
+| 50 | Proxy/CA config (`settings.https_proxy`, `settings.ca_bundle`) | #1217 | 0.60.1 | Not started | ✅ `deadline-lib/api/session-cache.md` | ✅ Yes (4 tests) |
+| 35 | preGUI submission hook phase + parameter re-resolution + env hooks | #1178, #1242 | 0.57.3, 0.59.2 | Not started | ✅ `deadline-lib/bundle/submission-hooks.md` | ✅ Yes (1 test) |
+| 43 | preGUI hooks security gate (`allow_bundle_hooks` only) | #1221 | 0.59.1 | Not started (depends on #35) | ✅ `deadline-lib/bundle/submission-hooks.md` | |
+| 51 | Stream hook stderr to user while hooks run | #1254 | 0.60.1 | Not started | ✅ `deadline-lib/bundle/submission-hooks.md` | |
+| 52 | Run environment and bundle submission hooks together | #1261 | 0.60.1 | Not started | ✅ `deadline-lib/bundle/submission-hooks.md` | |
+| 53 | TTY auto-detect `--output` format | #1237 | 0.60.0 | Not started | ✅ `deadline-cli/output-and-errors.md` | |
+| 54 | Qt-free `run_pre_gui_hooks` for DCC submitters | #1255 | 0.60.1 | Not started (depends on #35) | ✅ `deadline-lib/bundle/submission-hooks.md` | |
+| 55 | Handle missing storage profile in sync-output warning | #1260 | 0.60.1 | ✅ N/A (code path doesn't exist in Rust) | N/A (bug fix) | |
+| 40 | Consolidate auth status (remove duplicate ListFarms probe) | #1201 | 0.59.1 | ✅ Already correct | N/A (Rust uses single ListFarms call) | |
+| 38 | Apply default client config to all boto clients (user-agent) | #1197 | 0.57.4 | ✅ Already correct | N/A (Rust applies user-agent to all clients) | |
+| 37 | Monitor session_id in telemetry | #1184 | 0.57.4 | Not started | N/A (trivial config passthrough) | |
+| 41 | AI agent invocation detection + telemetry | #1210 | 0.59.0 | Not started | ❌ | |
+| 36 | Auto-select farm/queue when only one available + farm/queue selectors in submit dialog | #1015, #1199 | 0.57.4, 0.60.1 | Not started | N/A (Python GUI only) | |
+| 39 | Host requirements populated from job template in gui-submit | #1198 | 0.57.4 | ✅ Done | N/A (Python GUI bug fix) | |
+| 56 | Prevent stale queue/storage profile IDs after farm change (GUI) | #1263 | 0.60.1 | ✅ Done | N/A (Python GUI bug fix) | |
 
 #### Deferred — Not GA or opt-in only
 
 | # | Feature | Python PR | Reason |
 |---|---------|-----------|--------|
-| 34 | Multi-region farm support | #1202 | **Not launched.** Feature is in code (0.59.0) but not GA. Will keep changing. Port once stable. |
+| 34 | Multi-region farm support (incl. cross-region endpoint fix #1233, CMK filter #1244) | #1202, #1233, #1244 | **Not launched.** Feature is in code (0.59.0+) but not GA. Cross-region fixes shipped in 0.59.2 but only matter with multi-region enabled. Port once stable. |
 | 42 | Conda queue environment v2 channel migration | #1211 | **Opt-in** (`use_deadline_cloud_v2_channel=False` by default). Only matters when DCC repos consume our wheel. |
 | 48 | Bulk-sync `gui/` with upstream Python UI code | — | Multi-region streaming (controller, async_runner, combo boxes), auto-select defaults, formatting drift. ~600 changed lines across 15 files. Blocked on #34 stabilizing. Do a cosmetic alignment pass independently. |
 
@@ -76,14 +87,28 @@ flags are deferred until they're stable and shipped.
 | 46 | Drop Python 3.8 from CI matrix | #1200 | Not started |
 | 47 | xa11y bridge warm-up + cache per session | #1206 | Not started |
 
+#### GUI Drift (6 missing UI tests)
+
+| Test | Feature |
+|------|---------|
+| `test_farm_and_queue_labels_present` | #36 (farm/queue selectors) |
+| `test_configured_farm_and_queue_names_shown` | #36 (farm/queue selectors) |
+| `test_storage_profile_hidden_without_profiles` | #36 (farm/queue selectors) |
+| `test_storage_profile_shown_with_profiles` | #36 (farm/queue selectors) |
+| `test_pre_gui_hook_not_run_when_disabled` | #35/#54 (preGUI hooks) |
+| `test_pre_gui_hook_prefills_job_name` | #35/#54 (preGUI hooks) |
+
 #### Suggested sequencing (GA items only)
 
-1. **#35 preGUI hooks** + **#43 security gate** — correctness + security, self-contained.
-2. **#40 Auth consolidation** — removes redundant ListFarms API call, simplification.
-3. **#38 Default client config** + **#37 session_id telemetry** + **#41 Agent detection** — small lib changes, telemetry/user-agent correctness.
-4. **#36 Auto-select farm/queue** — UX behavior, GUI + CLI.
-5. **#39 Host requirements from template** — GUI bug fix.
-6. **#44–47** GUI + test infra — align `gui/` + PyO3 contracts.
+1. **#50 Proxy/CA config** — conformance-breaking, self-contained config+lib change.
+2. **#35 preGUI hooks** (incl. #1242 param re-resolution, #1242 env hooks) + **#43 security gate** + **#51 stderr streaming** + **#52 env+bundle hooks together** + **#54 Qt-free DCC hook runner** — hooks cluster, correctness + security.
+3. **#53 TTY auto-detect `--output`** — small CLI change, improves agent/script UX.
+4. **#55 Missing storage profile warning** — small fix in sync-output.
+5. **#40 Auth consolidation** — removes redundant ListFarms API call, simplification.
+6. **#38 Default client config** + **#37 session_id telemetry** + **#41 Agent detection** — small lib changes, telemetry/user-agent correctness.
+7. **#36 Auto-select farm/queue + selectors in submit dialog** + **#56 stale IDs fix** — UX behavior, GUI + CLI.
+8. **#39 Host requirements from template** — GUI bug fix.
+9. **#44–47** GUI + test infra — align `gui/` + PyO3 contracts.
 
 ### Technical Debt (non-blocking)
 
